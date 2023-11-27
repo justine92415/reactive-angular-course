@@ -162,3 +162,43 @@ export class CoursesService {
 ### 7. 實際操作或練習:
 - 在現有的Angular應用程式中實施`shareReplay`以優化HTTP請求的處理。
 - 剖析其他RxJS操作符的使用場景，並在實際應用中進行練習。
+
+## Angular view Layer Patterns - Smart vs Presentational Components
+
+https://medium.com/front-end-weekly/smart-dumb-presentational-components-in-angular-bf01c5bf2d40
+
+### 1. 筆記摘要
+在這堂課中，學習者介紹了一些有用的設計模式，專注於智能組件和呈現組件，以更好地理解這些模式。透過重構，創建了一個名為"course card list"的呈現組件，用於顯示課程卡片的列表。這個組件僅負責接收輸入並顯示相應的數據，將呈現邏輯從主組件中提取出來，實現了代碼的重用性。
+
+### 2. 關鍵詞
+- 設計模式
+- 智能組件
+- 呈現組件
+- 重構
+- Angular CLI
+- Ng4
+- Mat card component
+- Angular input decorator
+- Presentational component
+- Reactive style
+
+### 3. 討論點
+- 重構的優勢：將相似的呈現邏輯提取成單獨的呈現組件，提高代碼的可讀性和重用性。
+- 智能組件 vs. 呈現組件：智能組件處理業務邏輯和數據交互，呈現組件僅處理數據的顯示。
+- 使用Angular CLI生成組件：演示了如何使用Angular CLI生成新的組件並定義其公共API。
+- Angular input decorator：用於標註組件的輸入屬性，指明其為輸入屬性。
+
+### 4. 個人理解
+這份學習筆記強調了組件的分離和重用性。通過將相似的呈現邏輯抽取到單獨的呈現組件中，可以更清晰地區分組件的職責，提高代碼的維護性。在智能組件中處理業務邏輯，並將顯示邏輯委託給呈現組件，有助於保持代碼的結構清晰。
+
+### 5. 待深入學習
+- 深入理解Angular CLI的使用和組件生成。
+- 進一步瞭解Angular中的設計模式和最佳實踐。
+- 學習更多有關Angular的呈現組件和智能組件的使用場景和設計原則。
+
+### 6. 連結先前知識
+這份學習筆記擴展了先前對Angular框架和組件的基本理解，特別是在組件分離和重構方面的應用。
+
+### 7. 實際操作或練習
+- 使用Angular CLI生成一個新的組件並實際進行重構，將相似的呈現邏輯提取到呈現組件中。
+- 嘗試在自己的Angular應用程序中應用所學的設計模式和組件分離原則。
