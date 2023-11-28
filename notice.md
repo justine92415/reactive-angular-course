@@ -501,3 +501,85 @@ export class LoadingService {
 ```
 
 這樣的設計讓我們能夠在應用程式的各個地方方便地打開或關閉載入指示器，同時與特定 observable 的生命週期相關聯，使得在處理非同步操作時更加方便和一致。在接下來的課程中，我們將進一步實作 `showLoaderUntilCompleted` 方法，以及分配 `loading observable` 的值的實現。
+
+# Loading Service 完成及 Show Loader Until Completed 方法
+
+## 簡介
+在這個新的課程中，我們將完成載入服務的實作，提供一個稍微更方便的 API 來協助我們打開和關閉載入指示器。這裡我們要實作的是 `showLoaderUntilCompleted` 方法。
+
+## 直接使用 Loading On 和 Loading Off 對比
+在 Home Component 中，我們在重新載入課程時開啟載入指示器，並在這個 observable 完成或發生錯誤時關閉它。現在，讓我們看看如果我們不使用這個 API 會是什麼樣子。
+
+首先，我們移除 `loadingOn` 以及使用 `finalize` 運算符的部分，回到原始的課程 observable 定義，沒有載入指示器功能。
+
+現在，我們要使用 `showLoaderUntilCompleted` 方法來添加載入指示器功能。這個方法接受一個 observable 作為輸入，返回一個帶有載入指示器功能的相同類型的 observable。
+
+```typescript
+// home.component.ts
+
+// 移除 loadingOn 和 finalize 的部分
+
+// Load all courses observable
+const loadAllCourses$ = this.apiService.loadAllCourses();
+
+// 使用 showLoaderUntilCompleted 方法
+const loadCourses$ = this.loadingService.showLoaderUntilCompleted(loadAllCourses$);
+
+// 使用新的 observable 來定義 beginner 和 advanced courses
+this.beginnerCourses$ = loadCourses$.pipe(map(courses => courses.filter(course => course.category === 'BEGINNER')));
+this.advancedCourses$ = loadCourses$.pipe(map(courses => courses.filter(course => course.category === 'ADVANCED')));
+```
+
+這個 API 更方便，更少入侵，我們不需要在課程 observable 定義中添加新的運算符，比如 `finalize`。
+
+現在，讓我們來看看如何實現 `showLoaderUntilCompleted` 方法。
+
+## 實現 `showLoaderUntilCompleted` 方法
+首先，我們需要在接收到輸入 observable 的生命週期開始之前，創建另一個初始 observable，該 observable 會發出一個值，這個值將觸發載入指示器。我們使用 RxJS 的工廠方法 `of` 來創建這個只發出一個值（null）然後立即完成的 observable。
+
+```typescript
+// loading.service.ts
+
+import { of } from 'rxjs';
+
+@Injectable()
+export class LoadingService {
+  // ... (之前的部分)
+
+  showLoaderUntilCompleted<T>(observable: Observable<T>): Observable<T> {
+    const initialObservable = of(null).pipe(
+      tap(() => this.loadingOn())
+    );
+
+    return initialObservable.pipe(
+      concatMap(() => observable),
+      finalize(() => this.loadingOff())
+    );
+  }
+}
+```
+
+- 我們使用 `tap` 運算符來觸發副作用，即調用 `loadingOn()`，以顯示載入指示器。
+- 使用 `concatMap` 運算符將初始 observable 的值轉換為輸入 observable，這意味著結果 observable 發出的值將與輸入 observable 發出的值相同，但載入指示器已經打開。
+- 當輸入 observable 完成或發生錯誤時，我們使用 `finalize` 運算符來通知我們的 observable 鏈結結束，然後調用 `loadingOff()` 來關閉載入指示器。
+
+這個方法的實現看起來比較複雜，讓我們快速回顧一下：
+- 我們首先創建了一個初始 observable，只是為了能夠創建一個 observable 鏈。
+- 當接收到這個初始值時，我們首先打開載入指示器，然後切換到發出由輸入 observable 發出的值。
+- 我們使用 `concatMap` 運算符將來自源 observable（在這種情況下，這個 observable 只發出值 null，然後立即完成）的值轉換為新的 observable，即輸入 observable。
+- 這意味著結果 observable 發出的值將與輸入 observable 發出的值相同，除了載入指示器已經打開。
+- 當輸入 observable 完成或發生錯誤時，我們使用 `finalize` 運算符結束我們的 observable 鏈結，然後調用 `loadingOff()` 關閉載入指示器。
+
+這個設計的主要優勢是，載入指示器只有在使用 `showLoaderUntilCompleted` 返回的 observable 訂閱時才會打開。這意味著載入指示器的顯示或隱藏完全與返回的 observable 的生命週期相關聯。只有當返回的 observable 被訂閱時，載入指示器才會打開，並且只有當返回的 observable 完成其生命週期時，載入指示器才會關閉。
+
+這個方法接受一個泛型類型 `T`，但我們甚至不需要在調用 `showLoaderUntilCompleted` 時明確指定它。例如，在我們的 home component 中，我們只是傳入 `loadAllCourses$`，這是一
+
+個 observable，它發出的值是課程數組。我們無需添加 `course array` 這個參數來告訴 `showLoaderUntilCompleted` 的實現我們的 observable 發出課程數組。相反，我們可以省略這個參數，`showLoaderUntilCompleted` 的實現將推斷出 `loadCourses$` 的類型。
+
+這意味著我們的程序的其餘部分是類型安全的。
+
+這個 `showLoaderUntilCompleted` 方法比之前的版本更方便使用。我們不需要到處添加 `finalize` 運算符來關閉載入指示器。這是一個更簡潔的選擇，為您的組件和服務添加載入指示器功能。
+
+現在，讓我們看看 `showLoaderUntilCompleted` 功能是如何運作的，我們將重新載入應用程序，並保持關注。如您所見，載入指示器功能正在正確運作，如預期那樣。
+
+現在，讓我們看看如何在應用程序的其他部分應用這個載入指示器功能。
