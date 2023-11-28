@@ -100,6 +100,9 @@
     },
     "@schematics/angular:directive": {
       "prefix": ""
+    },
+    "@schematics/angular:service": {
+      "skipTests": true
     }
   },
   "cli": {

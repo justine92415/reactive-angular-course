@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import {Observable} from 'rxjs';
+import { LoadingService } from '../services/loading.service';
 
 @Component({
   selector: 'loading',
@@ -8,6 +9,7 @@ import {Observable} from 'rxjs';
 })
 export class LoadingComponent implements OnInit {
 
+  loadService = inject(LoadingService)
 
   constructor() {
 

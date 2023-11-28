@@ -247,3 +247,257 @@ https://medium.com/front-end-weekly/smart-dumb-presentational-components-in-angu
 2. **HTTP請求調試**: 使用開發者工具或類似的工具來調試HTTP請求，深入了解請求和響應的細節。
 
 3. **狀態管理探索**: 了解更多關於Angular中狀態管理的技術和最佳實踐，並嘗試將其應用到自己的應用程式中。
+
+# Reactive Component Interaction
+
+## Angular 中的组件通信与响应式设计
+
+### 介绍
+
+作为一位学习者，你最近在课程中探讨了在引入状态管理技术之前，关于组件通信的一部分。重点是讨论 Angular 组件如何进行交互，特别是当它们位于组件树的不同层次时。
+
+#### Angular 输入语法
+
+迄今为止，组件间的交互主要涉及 Angular 的输入语法，其中组件通过输入成员变量传递数据给彼此。
+
+```typescript
+// 例如：Courses Card List 组件
+@Input() courses: Course[];
+```
+
+### 挑战：不同层次的组件
+
+然而，当两个组件完全位于 Angular 组件树的不同层次时，标准的输入/输出机制是不够的。这种情况在 Angular 应用程序中很常见，举了两个例子：
+
+1. **加载指示器：**
+   - 需要在数据加载期间提供视觉反馈。
+   - 单独的组件，可能位于需要指示加载的地方的相对较远的级别。
+
+2. **错误消息面板：**
+   - 用于显示在应用程序的多个地方触发的错误。
+   - 需要与 home 组件或编辑课程对话框等组件进行交互。
+
+### 采用响应式设计实现解耦交互
+
+提出的解决方案涉及采用响应式设计，以便在组件位于组件树的不同层次时促进解耦的交互。重点是构建一个加载指示器组件作为初始示例。
+
+### 构建加载指示器
+
+#### 加载组件骨架
+
+首先，你从加载指示器组件的骨架开始：
+
+```typescript
+// Loading 组件 TypeScript
+@Component({
+  selector: 'app-loading',
+  templateUrl: './loading.component.html',
+  styleUrls: ['./loading.component.css']
+})
+export class LoadingComponent {
+  // 目前尚未添加任何逻辑
+}
+```
+
+#### 设计概述
+
+该设计围绕着一种响应式的方法，使应用程序的多个部分能够透明地与加载指示器组件进行交互。具体的响应式设计细节将在接下来的课程中进行探讨。
+
+### 结论
+
+在即将展开的课程中，你将深入了解加载指示器的实现细节，并了解采用响应式设计方法如何简化组件之间的交互，即使它们位于 Angular 组件树的不同层次。敬请期待实际示例和有关在 Angular 应用程序中进行有效组件通信的见解。
+
+# Loading Indicator Implementation in Angular
+
+## Introduction
+- 本課程將實作一個載入指示器（Loading Indicator）解決方案，透過反應式設計實現不同層次的 Angular 組件樹能夠輕鬆與載入組件進行解耦的互動。
+
+## Component HTML Structure
+- 使用 Angular Material Spinner 組件實現載入指示器。
+- 將 Spinner 組件包裹在自定義樣式的容器內，該容器具有 CSS 類別 "Spinner container"。
+
+```html
+<!-- Template -->
+<div class="Spinner container">
+  <mat-spinner></mat-spinner>
+</div>
+```
+
+## Integration in Application
+- 使用 `loading` 標籤作為選擇器(selector)，將載入指示器集成到應用程式中。
+- 常常僅在應用程式根組件的層次上添加一個載入指示器實例，位於路由輸出（router outlet）的頂部。
+
+```html
+<!-- App Root Component -->
+<app-root>
+  <mat-top-menu></mat-top-menu>
+  <router-outlet></router-outlet>
+  <loading></loading> <!-- Loading Indicator Instance -->
+</app-root>
+```
+
+## Communication via Shared Service
+- 使用共享服務 "loading service" 實現載入指示器與應用程式其他部分的通信。
+- 這個服務的實例只會在應用程式根組件及其子組件中可見。
+
+### Loading Service Definition
+```typescript
+// loading.service.ts
+import { Injectable } from '@angular/core';
+
+@Injectable()
+export class LoadingService {
+  // Service implementation
+}
+```
+
+### Service Configuration in App Component
+```typescript
+// app.component.ts
+import { LoadingService } from './loading/loading.service';
+
+@Component({
+  // Component metadata
+  providers: [LoadingService], // Add LoadingService to providers
+})
+export class AppComponent {
+  // Component implementation
+}
+```
+
+### Injecting Loading Service in Components
+- 在需要顯示載入指示器的組件中注入 `LoadingService`。
+
+```typescript
+// Any component that needs Loading Indicator
+import { LoadingService } from './loading/loading.service';
+
+@Component({
+  // Component metadata
+})
+export class HomeComponent {
+  constructor(private loadingService: LoadingService) {
+    // Constructor implementation
+  }
+}
+```
+
+## Reactive Design of Loading Service
+- `LoadingService` 將採用反應式設計，使不同層次的組件能夠以解耦和可維護的方式進行互動。
+
+### Example: Home Component
+- 在 Home 組件中，當從後端獲取課程列表時，可以通過 `LoadingService` 顯示載入指示器。
+
+```typescript
+// home.component.ts
+import { LoadingService } from '../loading/loading.service';
+
+@Component({
+  // Component metadata
+})
+export class HomeComponent {
+  constructor(private loadingService: LoadingService) {
+    // Constructor implementation
+    this.loadingService.show(); // Show loading indicator
+    // ... Perform asynchronous operation
+    this.loadingService.hide(); // Hide loading indicator when operation is complete
+  }
+}
+```
+
+### Example: Edit Course Dialog Component
+- 在編輯課程對話框組件中，也可以通過 `LoadingService` 顯示載入指示器。
+
+```typescript
+// edit-course-dialog.component.ts
+import { LoadingService } from '../loading/loading.service';
+
+@Component({
+  // Component metadata
+})
+export class EditCourseDialogComponent {
+  constructor(private loadingService: LoadingService) {
+    // Constructor implementation
+    this.loadingService.show(); // Show loading indicator
+    // ... Perform asynchronous operation
+    this.loadingService.hide(); // Hide loading indicator when operation is complete
+  }
+}
+```
+
+這樣，通過 `LoadingService` 的反應式設計，不同組件層次之間實現了解耦且易於維護的互動，確保了應用程式中的異步操作能夠有效顯示和隱藏載入指示器。
+
+# Loading Service Reactive Design
+
+## Introduction
+- 本課程將探討我們載入服務（Loading Service）的反應式設計，並開始實作。
+- 目標是透過這個共享服務，在應用程式的不同部分（例如 home component、course dialogue 等）需要顯示載入指示器時，提供一種方便的方式，而不需要這些部分直接知道載入組件的存在。
+
+## Public API of Loading Service
+- 最重要的公共 API 部分是一個我們將稱之為 `loading observable` 的 observable。
+- 這個 observable 的類型是 `observable of boolean`，即發射的值只能是 `true` 或 `false`。
+- 當我們想向使用者顯示載入指示器時，這個 observable 會發射 `true`，而在我們想要隱藏載入指示器時，則發射 `false`。
+
+### Consuming Loading Observable in Loading Component Template
+- 在載入組件中，通過使 `loadingService` 成為公共屬性，我們可以在模板中使用 async 管道來消耗 `loading observable`。
+- 根據 observable 發射的值，決定是否顯示整個載入組件。
+
+```html
+<!-- Loading Component Template -->
+<div *ngIf="loadingService.loading$ | async">
+  <mat-spinner></mat-spinner>
+</div>
+```
+
+### Advantages of the Design
+- 這個簡單的設計有一些優勢：
+  - 通過在模板中使用 observable，載入組件完全不知道 Angular 應用程式的其餘部分的結構，例如 home component、edit course component 等。
+  - 載入組件只知道共享載入服務的 `loading observable`，這是它與應用程式的唯一互動方式。
+
+## Additional Methods in Loading Service
+- 在 `loading service` 中新增 `loading on` 和 `loading off` 兩個方法，以方便在應用程式的任何地方隨時打開或關閉載入指示器。
+
+```typescript
+// loading.service.ts
+
+@Injectable()
+export class LoadingService {
+  loading$: Observable<boolean>;
+
+  constructor() {
+    // Implementation of loading observable assignment (not shown)
+  }
+
+  loadingOn(): void {
+    // Turn on the loading indicator
+  }
+
+  loadingOff(): void {
+    // Turn off the loading indicator
+  }
+}
+```
+
+## Show Loader Until Completed Method
+- 新增一個名為 `showLoaderUntilCompleted` 的方法，以便在觀察特定 observable 的生命週期時，控制載入指示器的顯示和隱藏。
+- 這個方法接收一個 observable 作為輸入參數，返回一個具有載入指示器功能的相同類型的 observable。
+
+```typescript
+// loading.service.ts
+
+@Injectable()
+export class LoadingService {
+  loading$: Observable<boolean>;
+
+  constructor() {
+    // Implementation of loading observable assignment (not shown)
+  }
+
+  showLoaderUntilCompleted<T>(observable: Observable<T>): Observable<T> {
+    // Implementation will be covered in a later lesson
+    return undefined;
+  }
+}
+```
+
+這樣的設計讓我們能夠在應用程式的各個地方方便地打開或關閉載入指示器，同時與特定 observable 的生命週期相關聯，使得在處理非同步操作時更加方便和一致。在接下來的課程中，我們將進一步實作 `showLoaderUntilCompleted` 方法，以及分配 `loading observable` 的值的實現。
