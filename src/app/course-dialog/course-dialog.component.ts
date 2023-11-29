@@ -1,3 +1,4 @@
+import { CourseStoreService } from './../services/course-store.service';
 import {
   AfterViewInit,
   Component,
@@ -29,9 +30,7 @@ export class CourseDialogComponent implements AfterViewInit {
 
   course: Course;
 
-  courseService = inject(CoursesService);
-
-  loadService = inject(LoadingService);
+  courseStore = inject(CourseStoreService);
 
   messagesService = inject(MessagesService);
 
@@ -55,19 +54,9 @@ export class CourseDialogComponent implements AfterViewInit {
   save() {
     const changes = this.form.value;
 
-    const saveCourse$ = this.courseService.saveCourse(this.course.id, changes).pipe(
-      catchError((err) => {
-        const message = "Could not save course";
-        console.log(message, err);
-        this.messagesService.showErrors(message);
-        return throwError(err);
-      }),
-    );
+    const saveCourse$ = this.courseStore.saveCourse(this.course.id, changes).subscribe();
 
-    this.loadService.showLoaderUntilCompleted(saveCourse$).subscribe(
-      (val) => this.dialogRef.close(val),
-      (err) => console.log(err)
-    );
+    this.dialogRef.close(changes);
   }
 
   close() {
