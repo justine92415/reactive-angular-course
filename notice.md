@@ -1,318 +1,57 @@
-#Stateless Observables Services
-
-宣告式編程
-
-```typescript
-@Component({
-  selector: "home",
-  templateUrl: "./home.component.html",
-  styleUrls: ["./home.component.css"],
-})
-export class HomeComponent implements OnInit {
-  beginnerCourses: Course[];
-
-  advancedCourses: Course[];
-
-  constructor(private http: HttpClient, private dialog: MatDialog) {}
-
-  ngOnInit() {
-    this.http.get("/api/courses").subscribe((res) => {
-      const courses: Course[] = res["payload"].sort(sortCoursesBySeqNo);
-
-      this.beginnerCourses = courses.filter((course) => course.category == "BEGINNER");
-
-      this.advancedCourses = courses.filter((course) => course.category == "ADVANCED");
-    });
-  }
-}
-```
-
-響應式編程
-
-```HTML
-<div class="courses-panel">
-    <h3>All Courses</h3>
-    <mat-tab-group>
-        <mat-tab label="Beginners">
-          <mat-card *ngFor="let course of beginnerCourses$ | async" class="course-card mat-elevation-z10">
-           ...略
-          </mat-card>
-        </mat-tab>
-        <mat-tab label="Advanced">
-          <mat-card *ngFor="let course of advancedCourses$ | async" class="course-card mat-elevation-z10">
-            ...略
-          </mat-card>
-        </mat-tab>
-    </mat-tab-group>
-</div>
-```
-
-```typescript
-export class CoursesService {
-  httpClient = inject(HttpClient);
-
-  loadAllCourses(): Observable<Course[]> {
-    return this.httpClient.get<Course[]>("/api/courses").pipe(
-      map((res) => res["payload"]),
-    );
-  }
-}
-```
-
-```typescript
-@Component({
-  selector: "home",
-  templateUrl: "./home.component.html",
-  styleUrls: ["./home.component.css"],
-})
-export class HomeComponent implements OnInit {
-  beginnerCourses$: Observable<Course[]>;
-
-  advancedCourses$: Observable<Course[]>;
-
-  courseService = inject(CoursesService);
-
-  constructor(private dialog: MatDialog) {}
-
-  ngOnInit() {
-    const course$ = this.courseService.loadAllCourses().pipe(map((courses) => courses.sort(sortCoursesBySeqNo)));
-
-    this.beginnerCourses$ = course$.pipe(map((courses) => courses.filter((course) => course.category === "BEGINNER")));
-
-    this.advancedCourses$ = course$.pipe(map((courses) => courses.filter((course) => course.category === "ADVANCED")));
-  }
-}
-```
-## Consuming Observable-based services using the Angular async Pipe
-**筆記摘要：**
-
-1. **Service 可重複使用：** 重構後，引入了一個獨立的Service，使得loadAllCourses邏輯在應用中其他地方可以輕鬆重複使用。
-
-2. **消除回調地獄：** 透過觀察者定義，消除了潛在的回調地獄，使程式碼更具可讀性和可維護性。
-
-3. **數據管理改進：** 數據現在透過觀察者管理，不再依賴可變狀態，有助於保持程式碼的清晰度。
-
-4. **異步管道的使用：** 使用異步管道（async pipe）訂閱觀察者，使數據對視圖可訪問，同時避免了手動訂閱可能導致的內存泄漏。
-
-5. **狀態管理的提及：** 強調目前解決方案是完全無狀態的，但在後續課程中將介紹如何使用 Rxjs 實現輕量級的狀態管理。
-
-**關鍵詞：** 重構、觀察者、異步管道、狀態管理、可重複使用。
-
-**討論點：**
-
-- 如何在其他部分輕鬆重複使用新服務？
-- 如何避免回調地獄對程式碼可讀性的影響？
-- 為何數據管理的改進對程式碼清晰度有幫助？
-- async pipe 如何確保不會發生內存泄漏？
-- 後續課程中，什麼是輕量級狀態管理的核心概念？
-
-**個人理解：**
-
-- 觀察者模式的應用使得程式碼更易於理解。
-- 數據的無狀態管理有助於減少錯誤和提高可維護性。
-- async pipe 的使用使得訂閱和取消訂閱更為簡單。
-
-**待深入學習：**
-
-- 如何在 Rxjs 中實現輕量級的狀態管理？
-- 如何進一步提高觀察者模式的應用？
-
-## Avoiding Angular duplicate HTTP requests with the RxJs shareReplay operator
-
-```typescript
-export class CoursesService {
-  httpClient = inject(HttpClient);
-
-  loadAllCourses(): Observable<Course[]> {
-    return this.httpClient.get<Course[]>("/api/courses").pipe(
-      map((res) => res["payload"]),
-      shareReplay()
-    );
-  }
-}
-```
-
-### 1. 筆記摘要:
-本課程內容主要討論在Angular應用程式中避免發出意外的HTTP請求的常見反模式。作者在這堂課中指出一個問題，即當訂閱Angular Http服務返回的可觀察對象時，每個訂閱都會導致一個HTTP請求，這可能不符合預期行為。課程的解決方案是使用RxJS操作符`shareReplay`，以確保僅在第一次訂閱時發出HTTP請求，並在記憶中保留結果，以供後續訂閱使用。
-
-### 2. 關鍵詞:
-- Angular
-- HTTP服務
-- 反模式
-- 可觀察對象
-- RxJS
-- `shareReplay`操作符
-
-### 3. 討論點:
-- HTTP服務返回的可觀察對象導致每個訂閱都發出一個HTTP請求。
-- 使用`shareReplay`操作符確保僅在第一次訂閱時發出HTTP請求，以後的訂閱都使用已存儲的結果，避免重複請求。
-
-### 4. 個人理解:
-- Angular中的HTTP服務返回的可觀察對象在預設情況下導致每個訂閱都發出一個HTTP請求，這可能導致性能問題。
-- 使用`shareReplay`操作符是一種有效的方式，可以確保僅在需要時發出一次HTTP請求，避免重複的請求對後端造成不必要的壓力。
-
-### 5. 待深入學習:
-- 了解RxJS中其他常用的操作符，以擴大對可觀察對象的處理能力。
-- 深入理解Angular中的HTTP服務和相關的最佳實踐。
-
-### 6. 連結先前知識:
-- 涉及Angular框架的使用，了解Angular中的服務和可觀察對象的基本概念。
-- 使用RxJS的操作符，特別是`map`和`shareReplay`。
-
-### 7. 實際操作或練習:
-- 在現有的Angular應用程式中實施`shareReplay`以優化HTTP請求的處理。
-- 剖析其他RxJS操作符的使用場景，並在實際應用中進行練習。
-
-## Angular view Layer Patterns - Smart vs Presentational Components
-
-https://medium.com/front-end-weekly/smart-dumb-presentational-components-in-angular-bf01c5bf2d40
-
-### 1. 筆記摘要
-在這堂課中，學習者介紹了一些有用的設計模式，專注於智能組件和呈現組件，以更好地理解這些模式。透過重構，創建了一個名為"course card list"的呈現組件，用於顯示課程卡片的列表。這個組件僅負責接收輸入並顯示相應的數據，將呈現邏輯從主組件中提取出來，實現了代碼的重用性。
-
-### 2. 關鍵詞
-- 設計模式
-- 智能組件
-- 呈現組件
-- 重構
-- Angular CLI
-- Ng4
-- Mat card component
-- Angular input decorator
-- Presentational component
-- Reactive style
-
-### 3. 討論點
-- 重構的優勢：將相似的呈現邏輯提取成單獨的呈現組件，提高代碼的可讀性和重用性。
-- 智能組件 vs. 呈現組件：智能組件處理業務邏輯和數據交互，呈現組件僅處理數據的顯示。
-- 使用Angular CLI生成組件：演示了如何使用Angular CLI生成新的組件並定義其公共API。
-- Angular input decorator：用於標註組件的輸入屬性，指明其為輸入屬性。
-
-### 4. 個人理解
-這份學習筆記強調了組件的分離和重用性。通過將相似的呈現邏輯抽取到單獨的呈現組件中，可以更清晰地區分組件的職責，提高代碼的維護性。在智能組件中處理業務邏輯，並將顯示邏輯委託給呈現組件，有助於保持代碼的結構清晰。
-
-### 5. 待深入學習
-- 深入理解Angular CLI的使用和組件生成。
-- 進一步瞭解Angular中的設計模式和最佳實踐。
-- 學習更多有關Angular的呈現組件和智能組件的使用場景和設計原則。
-
-### 6. 連結先前知識
-這份學習筆記擴展了先前對Angular框架和組件的基本理解，特別是在組件分離和重構方面的應用。
-
-### 7. 實際操作或練習
-- 使用Angular CLI生成一個新的組件並實際進行重構，將相似的呈現邏輯提取到呈現組件中。
-- 嘗試在自己的Angular應用程序中應用所學的設計模式和組件分離原則。
-
-
-## Data Modification Example in Reactive Style (Stateless Application)
-
-### 筆記摘要:
-在這一課中，學習者繼續將應用程式重構為反應式風格，專注於資料修改操作。目前應用程式仍然是完全無狀態的，沒有進行狀態管理。將來將介紹如何使用狀態管理技術來提升使用者體驗。本課程重點討論沒有狀態管理時的資料修改操作，並展示了一個編輯課程的對話框。
-
-### 關鍵詞:
-- 反應式風格
-- 資料修改操作
-- 狀態管理
-- 對話框
-- RxJS
-- Observable
-
-### 討論點:
-1. **狀態管理介紹**: 課程提到應用程式目前是無狀態的，之後會介紹如何添加狀態管理技術。在這種情況下，什麼是狀態管理，以及它如何改善使用者體驗？
-
-2. **資料修改操作**: 詳細討論了編輯課程的對話框組件，包括介面元素和邏輯。重點是尚未實現保存數據的邏輯，並將在接下來的課程中實現。
-
-3. **資料修改到後端**: 介紹了保存數據變更到後端的邏輯，使用了Angular的HttpClient和HTTP PUT請求。講解了為什麼使用RxJS的`shareReplay`操作符來避免多次HTTP調用。
-
-4. **對話框關閉處理**: 當對話框成功保存後，使用`afterClosed` observable來檢測對話框的關閉事件，並觸發相應的處理。介紹了在成功保存時使用RxJS的`tap`操作符來發送事件通知應用程序的其他部分。
-
-5. **重新載入課程**: 當課程成功保存後，需要重新載入所有課程以反映最新的數據。介紹了在組件中定義一個`coursesChanged`事件，以及如何在成功保存時訂閱並觸發該事件。
-
-6. **實時示例**: 透過示例演示了在編輯課程後，成功保存並重新載入所有課程的過程，並強調了HTTP請求的延遲。
-
-### 個人理解:
-在這篇學習筆記中，學習者正在學習如何實現反應式風格的資料修改操作。主要涉及到使用Angular的HttpClient進行HTTP PUT請求，以將數據變更保存到後端。同時，介紹了如何通過發送事件通知的方式來處理對話框的關閉和成功保存的情況，以及如何重新載入所有課程以反映最新的數據。
-
-### 待深入學習:
-1. **RxJS的進一步學習**: 了解更多RxJS操作符的使用和原理，特別是`shareReplay`和`tap`的詳細功能。
-
-2. **Angular的HttpClient進一步研究**: 深入研究Angular的HttpClient，了解更多關於HTTP請求和響應的細節。
-
-### 連結先前知識:
-這篇學習筆記擴展了先前學習的Angular和RxJS相關知識，特別是在資料修改操作和狀態管理方面的應用。
-
-### 實際操作或練習:
-1. **實際應用**: 嘗試在自己的Angular應用程式中實現類似的資料修改操作，並使用RxJS進行異步處理。
-
-2. **HTTP請求調試**: 使用開發者工具或類似的工具來調試HTTP請求，深入了解請求和響應的細節。
-
-3. **狀態管理探索**: 了解更多關於Angular中狀態管理的技術和最佳實踐，並嘗試將其應用到自己的應用程式中。
-
 # Reactive Component Interaction
 
-## Angular 中的组件通信与响应式设计
+# 筆記：組件通訊和反應式設計
 
-### 介绍
+## 引言
 
-作为一位学习者，你最近在课程中探讨了在引入状态管理技术之前，关于组件通信的一部分。重点是讨论 Angular 组件如何进行交互，特别是当它们位于组件树的不同层次时。
+在介紹應用程序中的任何狀態管理技術之前，讓我們先談談組件通訊。
 
-#### Angular 输入语法
+到目前為止，在我們的應用程序中，我們通過 Angular 的輸入語法實現了多個組件之間的交互。例如，`courses card list` 組件是一個純粹的表示性組件，通過 Angular 的輸入成員變數接收需要顯示的課程。
 
-迄今为止，组件间的交互主要涉及 Angular 的输入语法，其中组件通过输入成员变量传递数据给彼此。
+現在，讓我們想象一下，如果我們有兩個完全位於 Angular 組件樹不同級別的組件，它們仍然需要相互交互，會發生什麼情況？
 
-```typescript
-// 例如：Courses Card List 组件
-@Input() courses: Course[];
-```
+顯然，在這種情況下，我們不能使用標準的 Angular 輸入和輸出，因為這種機制僅在一個組件出現在另一個組件的模板上時才有用。如果兩個組件之間沒有直接的父子關係，那麼該怎麼辦？
 
-### 挑战：不同层次的组件
+你可能會認為這種情況相當罕見，但實際上，在你構建的幾乎每個 Angular 應用程序中，這種情況都會出現。
 
-然而，当两个组件完全位于 Angular 组件树的不同层次时，标准的输入/输出机制是不够的。这种情况在 Angular 应用程序中很常见，举了两个例子：
+讓我們舉幾個在你自己的應用程序中肯定會需要的常見組件的例子。
 
-1. **加载指示器：**
-   - 需要在数据加载期间提供视觉反馈。
-   - 单独的组件，可能位于需要指示加载的地方的相对较远的级别。
+## 例子 1：載入指示器（Loading Indicator）
 
-2. **错误消息面板：**
-   - 用于显示在应用程序的多个地方触发的错误。
-   - 需要与 home 组件或编辑课程对话框等组件进行交互。
+當我們由於後端延遲而從應用程序中加載數據時，我們希望向用戶顯示一些視覺反饋，使用載入指示器顯示數據仍在加載的消息。尤其是在執行保存課程操作時，這需要幾秒鐘的時間，我們希望在編輯課程對話框屏幕的頂部顯示載入指示器，以向用戶提供保存正在進行的反饋。
 
-### 采用响应式设计实现解耦交互
+在這種情況下，載入指示器將位於組件樹的完全不同級別，然後是主頁組件或編輯課程對話框。我們希望確保載入指示器（它將是一個獨立的 Angular 組件）和需要與其互動的不同組件（例如主頁組件或編輯課程對話框）之間沒有緊密耦合。我們希望確保這兩個組件可以以可維護的方式互動。
 
-提出的解决方案涉及采用响应式设计，以便在组件位于组件树的不同层次时促进解耦的交互。重点是构建一个加载指示器组件作为初始示例。
+在接下來的幾課中，我們將學習通過採用反應式設計，即使這兩個組件位於組件樹的非常不同級別，也能夠以解耦的方式進行交互。
 
-### 构建加载指示器
+## 載入指示器示例
 
-#### 加载组件骨架
-
-首先，你从加载指示器组件的骨架开始：
+首先，我們將提供一個載入指示器的示例。為了構建我們的載入指示器，我們已經有了載入組件的骨架。讓我們看一下載入組件的初始版本。
 
 ```typescript
-// Loading 组件 TypeScript
+// loading.component.ts
+import { Component } from "@angular/core";
+
 @Component({
-  selector: 'app-loading',
-  templateUrl: './loading.component.html',
-  styleUrls: ['./loading.component.css']
+  selector: "app-loading",
+  template: '<div class="loading">Loading...</div>',
+  styleUrls: ["./loading.component.css"],
 })
-export class LoadingComponent {
-  // 目前尚未添加任何逻辑
-}
+export class LoadingComponent {}
 ```
 
-#### 设计概述
+上述代碼創建了一個名為`LoadingComponent`的 Angular 組件，它僅具有 HTML 模板和相應的 CSS 樣式。該組件當前沒有添加任何邏輯，僅用於演示目的。
 
-该设计围绕着一种响应式的方法，使应用程序的多个部分能够透明地与加载指示器组件进行交互。具体的响应式设计细节将在接下来的课程中进行探讨。
-
-### 结论
-
-在即将展开的课程中，你将深入了解加载指示器的实现细节，并了解采用响应式设计方法如何简化组件之间的交互，即使它们位于 Angular 组件树的不同层次。敬请期待实际示例和有关在 Angular 应用程序中进行有效组件通信的见解。
+現在，讓我們討論我們即將採用的解決方案的設計。讓我們學習如何通過使用反應式設計使應用程序的多個部分能夠以透明的方式與載入組件互動。
 
 # Loading Indicator Implementation in Angular
 
 ## Introduction
+
 - 本課程將實作一個載入指示器（Loading Indicator）解決方案，透過反應式設計實現不同層次的 Angular 組件樹能夠輕鬆與載入組件進行解耦的互動。
 
 ## Component HTML Structure
+
 - 使用 Angular Material Spinner 組件實現載入指示器。
 - 將 Spinner 組件包裹在自定義樣式的容器內，該容器具有 CSS 類別 "Spinner container"。
 
@@ -324,6 +63,7 @@ export class LoadingComponent {
 ```
 
 ## Integration in Application
+
 - 使用 `loading` 標籤作為選擇器(selector)，將載入指示器集成到應用程式中。
 - 常常僅在應用程式根組件的層次上添加一個載入指示器實例，位於路由輸出（router outlet）的頂部。
 
@@ -332,18 +72,21 @@ export class LoadingComponent {
 <app-root>
   <mat-top-menu></mat-top-menu>
   <router-outlet></router-outlet>
-  <loading></loading> <!-- Loading Indicator Instance -->
+  <loading></loading>
+  <!-- Loading Indicator Instance -->
 </app-root>
 ```
 
 ## Communication via Shared Service
+
 - 使用共享服務 "loading service" 實現載入指示器與應用程式其他部分的通信。
 - 這個服務的實例只會在應用程式根組件及其子組件中可見。
 
 ### Loading Service Definition
+
 ```typescript
 // loading.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable } from "@angular/core";
 
 @Injectable()
 export class LoadingService {
@@ -352,9 +95,10 @@ export class LoadingService {
 ```
 
 ### Service Configuration in App Component
+
 ```typescript
 // app.component.ts
-import { LoadingService } from './loading/loading.service';
+import { LoadingService } from "./loading/loading.service";
 
 @Component({
   // Component metadata
@@ -366,11 +110,12 @@ export class AppComponent {
 ```
 
 ### Injecting Loading Service in Components
+
 - 在需要顯示載入指示器的組件中注入 `LoadingService`。
 
 ```typescript
 // Any component that needs Loading Indicator
-import { LoadingService } from './loading/loading.service';
+import { LoadingService } from "./loading/loading.service";
 
 @Component({
   // Component metadata
@@ -383,14 +128,16 @@ export class HomeComponent {
 ```
 
 ## Reactive Design of Loading Service
+
 - `LoadingService` 將採用反應式設計，使不同層次的組件能夠以解耦和可維護的方式進行互動。
 
 ### Example: Home Component
+
 - 在 Home 組件中，當從後端獲取課程列表時，可以通過 `LoadingService` 顯示載入指示器。
 
 ```typescript
 // home.component.ts
-import { LoadingService } from '../loading/loading.service';
+import { LoadingService } from "../loading/loading.service";
 
 @Component({
   // Component metadata
@@ -406,11 +153,12 @@ export class HomeComponent {
 ```
 
 ### Example: Edit Course Dialog Component
+
 - 在編輯課程對話框組件中，也可以通過 `LoadingService` 顯示載入指示器。
 
 ```typescript
 // edit-course-dialog.component.ts
-import { LoadingService } from '../loading/loading.service';
+import { LoadingService } from "../loading/loading.service";
 
 @Component({
   // Component metadata
@@ -430,15 +178,18 @@ export class EditCourseDialogComponent {
 # Loading Service Reactive Design
 
 ## Introduction
+
 - 本課程將探討我們載入服務（Loading Service）的反應式設計，並開始實作。
 - 目標是透過這個共享服務，在應用程式的不同部分（例如 home component、course dialogue 等）需要顯示載入指示器時，提供一種方便的方式，而不需要這些部分直接知道載入組件的存在。
 
 ## Public API of Loading Service
+
 - 最重要的公共 API 部分是一個我們將稱之為 `loading observable` 的 observable。
 - 這個 observable 的類型是 `observable of boolean`，即發射的值只能是 `true` 或 `false`。
 - 當我們想向使用者顯示載入指示器時，這個 observable 會發射 `true`，而在我們想要隱藏載入指示器時，則發射 `false`。
 
 ### Consuming Loading Observable in Loading Component Template
+
 - 在載入組件中，通過使 `loadingService` 成為公共屬性，我們可以在模板中使用 async 管道來消耗 `loading observable`。
 - 根據 observable 發射的值，決定是否顯示整個載入組件。
 
@@ -450,11 +201,13 @@ export class EditCourseDialogComponent {
 ```
 
 ### Advantages of the Design
+
 - 這個簡單的設計有一些優勢：
   - 通過在模板中使用 observable，載入組件完全不知道 Angular 應用程式的其餘部分的結構，例如 home component、edit course component 等。
   - 載入組件只知道共享載入服務的 `loading observable`，這是它與應用程式的唯一互動方式。
 
 ## Additional Methods in Loading Service
+
 - 在 `loading service` 中新增 `loading on` 和 `loading off` 兩個方法，以方便在應用程式的任何地方隨時打開或關閉載入指示器。
 
 ```typescript
@@ -479,6 +232,7 @@ export class LoadingService {
 ```
 
 ## Show Loader Until Completed Method
+
 - 新增一個名為 `showLoaderUntilCompleted` 的方法，以便在觀察特定 observable 的生命週期時，控制載入指示器的顯示和隱藏。
 - 這個方法接收一個 observable 作為輸入參數，返回一個具有載入指示器功能的相同類型的 observable。
 
@@ -505,9 +259,11 @@ export class LoadingService {
 # Loading Service 完成及 Show Loader Until Completed 方法
 
 ## 簡介
+
 在這個新的課程中，我們將完成載入服務的實作，提供一個稍微更方便的 API 來協助我們打開和關閉載入指示器。這裡我們要實作的是 `showLoaderUntilCompleted` 方法。
 
 ## 直接使用 Loading On 和 Loading Off 對比
+
 在 Home Component 中，我們在重新載入課程時開啟載入指示器，並在這個 observable 完成或發生錯誤時關閉它。現在，讓我們看看如果我們不使用這個 API 會是什麼樣子。
 
 首先，我們移除 `loadingOn` 以及使用 `finalize` 運算符的部分，回到原始的課程 observable 定義，沒有載入指示器功能。
@@ -526,8 +282,8 @@ const loadAllCourses$ = this.apiService.loadAllCourses();
 const loadCourses$ = this.loadingService.showLoaderUntilCompleted(loadAllCourses$);
 
 // 使用新的 observable 來定義 beginner 和 advanced courses
-this.beginnerCourses$ = loadCourses$.pipe(map(courses => courses.filter(course => course.category === 'BEGINNER')));
-this.advancedCourses$ = loadCourses$.pipe(map(courses => courses.filter(course => course.category === 'ADVANCED')));
+this.beginnerCourses$ = loadCourses$.pipe(map((courses) => courses.filter((course) => course.category === "BEGINNER")));
+this.advancedCourses$ = loadCourses$.pipe(map((courses) => courses.filter((course) => course.category === "ADVANCED")));
 ```
 
 這個 API 更方便，更少入侵，我們不需要在課程 observable 定義中添加新的運算符，比如 `finalize`。
@@ -535,21 +291,20 @@ this.advancedCourses$ = loadCourses$.pipe(map(courses => courses.filter(course =
 現在，讓我們來看看如何實現 `showLoaderUntilCompleted` 方法。
 
 ## 實現 `showLoaderUntilCompleted` 方法
+
 首先，我們需要在接收到輸入 observable 的生命週期開始之前，創建另一個初始 observable，該 observable 會發出一個值，這個值將觸發載入指示器。我們使用 RxJS 的工廠方法 `of` 來創建這個只發出一個值（null）然後立即完成的 observable。
 
 ```typescript
 // loading.service.ts
 
-import { of } from 'rxjs';
+import { of } from "rxjs";
 
 @Injectable()
 export class LoadingService {
   // ... (之前的部分)
 
   showLoaderUntilCompleted<T>(observable: Observable<T>): Observable<T> {
-    const initialObservable = of(null).pipe(
-      tap(() => this.loadingOn())
-    );
+    const initialObservable = of(null).pipe(tap(() => this.loadingOn()));
 
     return initialObservable.pipe(
       concatMap(() => observable),
@@ -564,6 +319,7 @@ export class LoadingService {
 - 當輸入 observable 完成或發生錯誤時，我們使用 `finalize` 運算符來通知我們的 observable 鏈結結束，然後調用 `loadingOff()` 來關閉載入指示器。
 
 這個方法的實現看起來比較複雜，讓我們快速回顧一下：
+
 - 我們首先創建了一個初始 observable，只是為了能夠創建一個 observable 鏈。
 - 當接收到這個初始值時，我們首先打開載入指示器，然後切換到發出由輸入 observable 發出的值。
 - 我們使用 `concatMap` 運算符將來自源 observable（在這種情況下，這個 observable 只發出值 null，然後立即完成）的值轉換為新的 observable，即輸入 observable。
@@ -583,3 +339,186 @@ export class LoadingService {
 現在，讓我們看看 `showLoaderUntilCompleted` 功能是如何運作的，我們將重新載入應用程序，並保持關注。如您所見，載入指示器功能正在正確運作，如預期那樣。
 
 現在，讓我們看看如何在應用程序的其他部分應用這個載入指示器功能。
+
+# 筆記：Reactive Loading Indicator 實作
+
+## 引言
+
+這節課中，我們繼續實作我們的響應式載入指示器。迄今為止，我們僅在主頁面組件中使用載入服務和載入功能。
+
+## 問題：載入服務在不同組件層次中的問題
+
+現在，我們切換到編輯課程對話框（course dialogue component）上，這個對話框的構造函數中也接收到一個載入服務實例。載入服務是我們共享的響應式服務，用於使應用程序中的多個組件，例如課程對話框和主頁面組件，以鬆散耦合的方式與載入指示器組件交互。
+
+然而，當我們嘗試打開編輯課程對話框時，應用程序崩潰。檢查控制台後，我們發現了一個依賴注入錯誤：`no provider for loading service`。這僅在嘗試打開對話框時發生。
+
+## 原因：組件樹的層次結構
+
+原因在於，由於 Angular Material 框架打開的對話框存在於完全不同的組件樹分支。在主頁面組件的模板中，我們可以訪問載入服務，但是在對話框組件中則無法訪問。
+
+### 解決方案：為課程對話框提供不同實例的載入服務
+
+為了解決這個問題，我們為課程對話框提供了一個不同的載入服務實例。我們在組件的 `providers` 屬性中添加了載入服務的構造函數，使 Angular 的依賴注入系統在該組件層次中創建一個新的載入服務實例。
+
+這樣，我們在程序中有兩個載入服務實例，每個實例僅在其組件及其子組件層次中可訪問。
+
+### 證實兩個載入服務實例
+
+為了確認兩個載入服務實例的存在，我們在課程對話框的構造函數中添加了日誌記錄。在控制台中可以看到，兩個實例都被創建。這解決了依賴注入錯誤，並確保每個組件及其子組件層次中都有一個本地的載入服務實例。
+
+## 問題：兩個實例的使用
+
+然而，對話框中的載入服務實例並未連接到主應用程序組件層次中的載入指示器。為了解決這個問題，我們在課程對話框模板中添加了一個新的載入指示器。
+
+這個第二個載入指示器在應用程序中可能有不同的載入指示器，用於向用戶顯示應用程序的不同等待狀態。該載入指示器將接收在課程對話框組件的 `providers` 屬性中定義的載入服務的實例。
+
+現在，我們的程序中有兩個載入指示器，每個都可以通過與其自己的載入服務實例交互來單獨控制。
+
+## 新功能：在保存操作中使用載入服務
+
+我們現在可以使用課程對話框中的載入服務來創建新的“保存課程” observable。這個 observable 將包含從課程服務獲取的 observable，每當調用保存課程操作時都會發生。
+
+通過訪問載入服務，我們使用之前在主頁面組件中看到的 `showLoaderUntilCompleted` 方法，將 `saveCourse$` observable 作為參數傳遞給它。這將返回一個具有載入指示器功能的新 observable。當這個 observable 被訂閱時，載入指示器將打開，並且當 observable 完成其生命週期時，載入指示器將被關閉。
+
+現在，我們的應用程序中有兩個載入指示器，它們可以獨立控制。
+
+## 結論
+
+透過使用 Angular 提供的 `providers` 屬性，我們能夠在不同的組件層次中創建本地實例的服務，以實現服務的局部可訪問性。這解決了在不同組件樹中共享服務的問題。
+
+現在，我們已經完成了載入指示器
+
+功能的實現。接下來，我們將繼續學習有關響應式組件交互的內容，將討論錯誤處理，並展示如何構建一個在應用程序中顯示錯誤消息的面板。
+
+# 筆記：響應式應用程序中的錯誤處理
+
+## 引言
+
+在接下來的幾節課中，我們將討論響應式應用程序中的錯誤處理。我們將實現一個常見的錯誤消息面板功能，將其添加到我們應用程序的頂部，就在頂部菜單欄的下方。這將是一個可關閉的錯誤消息面板，允許我們從應用程序的多個地方向用戶顯示錯誤消息。
+
+與之前載入指示器的情況類似，錯誤消息在模態對話框的情況下稍有不同。在模態對話框中，我們希望將錯誤消息顯示給用戶，以便用戶在關閉對話框之前可以在此處修復可能存在的任何錯誤。
+
+為了幫助我們實現這些消息組件，我們已經有了一個初始的功能框架。在`messages`文件夾中，我們有一個`messages`組件模板，目前是空的。我們還有一個`messages`組件，目前僅實現了`OnInit`方法和一個空的`OnClose`方法。還有一個`messages`組件的 CSS 文件，其中包含一些用於向用戶顯示錯誤消息的 CSS。
+
+## Messages Component Template
+
+`messages`組件的模板由包含一系列消息的容器組成。我們的容器將具有`messages container`的 CSS 類，並在其中循環遍歷一系列錯誤。每個錯誤都將具有`message`的 CSS 類。我們使用 Angular 的`NgFor`指令來循環遍歷錯誤列表。例如，我們假設有一個`errors`屬性，那麼我們使用`let error of errors`的語法來循環遍歷錯誤列表，然後使用 Angular 模板插值語法將每個錯誤（字符串）直接顯示在屏幕上。
+
+我們的消息容器面板將是一個紅色背景的面板，將延伸到應用程序的整個長度。我們還將添加一個小的關閉按鈕。這將是一個材料圖標，圖標將是一個代表關閉的十字。我們將給這個圖標一個 CSS 類，即`close`。每當用戶點擊此圖標時，我們將調用`OnClose`函數，這個函數負責隱藏整個消息容器。
+
+## Messages Component Implementation
+
+初始情況下，我們的組件將根據我們在`messages`組件中設置的`show messages`標誌的值來顯示或隱藏消息。我們將這個標誌初始化為`false`，因為最初沒有錯誤要顯示給用戶。我們使用 Angular 的`ngIf`指令來根據`show messages`標誌的值來顯示或隱藏消息容器。
+
+當用戶點擊`OnClose`時，我們希望隱藏消息容器，因此我們需要將`show messages`設置為`false`。
+
+問題是，在什麼時候這個標誌會變為`true`呢？這個標誌會在我們應用程序的其他地方獲得一些錯誤並希望顯示給用戶時變為`true`。那麼，應用程序的其餘部分將如何以一種解耦的方式與我們的消息組件進行交互，正如我們之前所見？
+
+## 解決方案：消息服務
+
+與載入指示器的情況一樣，我們可以通過使用一個基於 observable 的 API 的共享服務來實現這種解耦的組件通信。因此，我們將構建一個名為`messaging service`的服務，該服務將允許我們以解耦的方式與消息組件進行交互。
+
+在下一課中，我們將開始構建這個`messaging service`。
+
+# 筆記：實現消息服務
+
+## 引言
+
+在這一課中，我們將開始實現我們的消息服務。這將是一個基於 observable 的服務，我們將用它來與 Angular 應用程序的多個部分進行交互，以顯示錯誤消息。
+
+## Messages Service 實現
+
+首先，我們需要在`messages`目錄下創建一個新的`messages.service.ts`文件，其中包含我們的 observable-based 服務。我們創建一個名為`MessagesService`的類，並將其標記為 Angular 的可注入服務。與載入指示器服務的情況一樣，我們不將其聲明為全局單例，而是將允許在應用程序的不同部分創建不同的`MessagesService`實例。
+
+```typescript
+// messages.service.ts
+
+import { Injectable } from "@angular/core";
+import { BehaviorSubject } from "rxjs";
+
+@Injectable({
+  providedIn: "root",
+})
+export class MessagesService {
+  private errorMessagesSubject = new BehaviorSubject<string[]>([]);
+  errorMessages$ = this.errorMessagesSubject.asObservable();
+
+  constructor() {}
+
+  showErrors(errors: string[]) {
+    this.errorMessagesSubject.next(errors);
+  }
+}
+```
+
+上述代碼創建了一個名為`MessagesService`的 Angular 可注入服務。我們使用`BehaviorSubject`來維護一個錯誤消息的狀態，並且將其公開為`errorMessages$` observable，以便其他部分可以訂閱這些錯誤消息的變化。
+
+`showErrors`方法用於將錯誤消息發送到`errorMessagesSubject`，這樣訂閱者就可以得知有新的錯誤消息。
+
+## 使用 Messages Service
+
+現在，我們需要在應用程序中的不同地方創建`MessagesService`的實例，並與`MessagesComponent`進行交互。我們首先在應用程序的根組件（`app.component.ts`）中創建一個實例。
+
+```typescript
+// app.component.ts
+
+import { Component } from "@angular/core";
+import { MessagesService } from "./messages/messages.service";
+
+@Component({
+  selector: "app-root",
+  templateUrl: "./app.component.html",
+  styleUrls: ["./app.component.css"],
+})
+export class AppComponent {
+  constructor(private messagesService: MessagesService) {}
+}
+```
+
+然後，我們在根組件的模板中添加了`MessagesComponent`的實例，以便能夠顯示全局錯誤消息。
+
+```html
+<!-- app.component.html -->
+
+<app-messages></app-messages>
+
+<!-- 其他組件的內容 -->
+```
+
+現在，根組件及其所有子組件都可以通過注入`MessagesService`來顯示錯誤消息。
+
+在`home.component.ts`中的例子：
+
+```typescript
+// home.component.ts
+
+import { Component, OnInit } from "@angular/core";
+import { MessagesService } from "../messages/messages.service";
+
+@Component({
+  selector: "app-home",
+  templateUrl: "./home.component.html",
+  styleUrls: ["./home.component.css"],
+})
+export class HomeComponent implements OnInit {
+  constructor(private messagesService: MessagesService) {}
+
+  ngOnInit() {
+    // 在此處捕獲錯誤，然後顯示錯誤消息
+    this.loadCourses().subscribe(
+      () => {},
+      (error) => {
+        const errorMessage = "Could not load courses";
+        this.messagesService.showErrors([errorMessage]);
+        console.error(errorMessage, error);
+      }
+    );
+  }
+
+  loadCourses() {
+    // 實際加載課程的邏輯
+  }
+}
+```
+
+這是一個簡單的例子，展示了如何使用`MessagesService`在錯誤情況下顯示消息。`loadCourses`方法是一個模擬的加載課程的邏輯，並在錯
