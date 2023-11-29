@@ -16,12 +16,13 @@ import { catchError } from "rxjs/operators";
 import { throwError } from "rxjs";
 import { CoursesService } from "../services/courses.service";
 import { LoadingService } from "../services/loading.service";
+import { MessagesService } from "../services/messages.service";
 
 @Component({
   selector: "course-dialog",
   templateUrl: "./course-dialog.component.html",
   styleUrls: ["./course-dialog.component.css"],
-  providers: [LoadingService],
+  providers: [LoadingService,MessagesService],
 })
 export class CourseDialogComponent implements AfterViewInit {
   form: FormGroup;
@@ -31,6 +32,8 @@ export class CourseDialogComponent implements AfterViewInit {
   courseService = inject(CoursesService);
 
   loadService = inject(LoadingService);
+
+  messagesService = inject(MessagesService);
 
   constructor(
     private fb: FormBuilder,
@@ -52,7 +55,14 @@ export class CourseDialogComponent implements AfterViewInit {
   save() {
     const changes = this.form.value;
 
-    const saveCourse$ = this.courseService.saveCourse(this.course.id, changes);
+    const saveCourse$ = this.courseService.saveCourse(this.course.id, changes).pipe(
+      catchError((err) => {
+        const message = "Could not save course";
+        console.log(message, err);
+        this.messagesService.showErrors(message);
+        return throwError(err);
+      }),
+    );
 
     this.loadService.showLoaderUntilCompleted(saveCourse$).subscribe(
       (val) => this.dialogRef.close(val),
