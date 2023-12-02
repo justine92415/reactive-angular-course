@@ -1,6 +1,7 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, OnInit, inject} from '@angular/core';
 import { LoadingService } from './services/loading.service';
 import { MessagesService } from './services/messages.service';
+import { AuthStoreService } from './services/auth-store.service';
 
 
 
@@ -10,6 +11,8 @@ import { MessagesService } from './services/messages.service';
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements  OnInit {
+
+    authStore = inject(AuthStoreService);
 
     constructor() {
 
@@ -21,7 +24,7 @@ export class AppComponent implements  OnInit {
     }
 
   logout() {
-
+    this.authStore.logout();
   }
 
 }
