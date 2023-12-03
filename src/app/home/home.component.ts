@@ -1,5 +1,5 @@
 import { CourseStoreService } from "./../services/course-store.service";
-import { Component, OnInit, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, OnInit, inject } from "@angular/core";
 import { Course, sortCoursesBySeqNo } from "../model/course";
 import { interval, noop, Observable, of, throwError, timer } from "rxjs";
 import {
@@ -24,6 +24,7 @@ import { MessagesService } from "../services/messages.service";
   selector: "home",
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.css"],
+  changeDetection:ChangeDetectionStrategy.OnPush
 })
 export class HomeComponent implements OnInit {
   beginnerCourses$: Observable<Course[]>;
